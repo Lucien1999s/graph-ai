@@ -16,7 +16,7 @@ async def generate_chart_api(request: ChartRequest):
     if request.chart_type == "timeline":
         try:
             page_title = request.data["page_title"]
-            text_list = request.data["text_list"]
+            text_list = request.data["time_list"]
             data_list = request.data["data_list"]
             count = request.data["count"]
             html_url = generate_timeline(page_title, text_list, data_list, count)
