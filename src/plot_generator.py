@@ -15,6 +15,16 @@ def _html_to_png(html_file, output_png):
         output_dir, output_filename = os.path.split(output_png)
         hti = Html2Image(browser_executable="/app/.apt/usr/bin/google-chrome")
         hti.output_path = output_dir
+
+        # 使用新的無頭模式
+        hti.browser_flags = [
+            '--headless=new',  # 使用新的無頭模式
+            '--no-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--remote-debugging-port=9222'
+        ]
+
         hti.screenshot(html_file=html_file, save_as=output_filename)
     except Exception as e:
         print(f"Error during screenshot generation: {e}")
