@@ -11,7 +11,7 @@ def _gen_hashid(length=6):
     return ''.join(random.choice(characters) for _ in range(length))
 
 def _html_to_png(html_file, output_png):
-    hti = Html2Image()
+    hti = Html2Image(browser_executable="/app/.apt/usr/bin/google-chrome")
     hti.screenshot(html_file=html_file, save_as=output_png)
 
 def generate_timeline(page_title, text_list, data_list, count):
