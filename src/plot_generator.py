@@ -10,22 +10,30 @@ def _gen_hashid(length=6):
     characters = string.ascii_letters + string.digits
     return ''.join(random.choice(characters) for _ in range(length))
 
+from selenium import webdriver
+import chromedriver_autoinstaller
+
 def _html_to_png(html_file, output_png):
     try:
-        output_dir, output_filename = os.path.split(output_png)
-        hti = Html2Image(browser_executable="/app/.apt/usr/bin/google-chrome")
-        hti.output_path = output_dir
+        # 安裝 ChromeDriver
+        chromedriver_autoinstaller.install()
 
-        # 使用新的無頭模式
-        hti.browser_flags = [
-            '--headless=new',  # 使用新的無頭模式
-            '--no-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--remote-debugging-port=9222'
-        ]
+        # 設定 Chrome 的選項
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
 
-        hti.screenshot(html_file=html_file, save_as=output_filename)
+        # 啟動 Chrome 瀏覽器
+        driver = webdriver.Chrome(options=chrome_options)
+        
+        # 讀取 HTML 文件
+        driver.get(f"file://{html_file}")
+
+        # 儲存截圖
+        driver.save_screenshot(output_png)
+        driver.quit()
     except Exception as e:
         print(f"Error during screenshot generation: {e}")
         raise
