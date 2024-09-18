@@ -2,17 +2,17 @@ import tempfile
 import random
 import string
 from src.template import TEMPLATE
-from html2image import Html2Image
+from selenium import webdriver
+import chromedriver_autoinstaller
 import os
 import json
 
+# 生成隨機 ID
 def _gen_hashid(length=6):
     characters = string.ascii_letters + string.digits
     return ''.join(random.choice(characters) for _ in range(length))
 
-from selenium import webdriver
-import chromedriver_autoinstaller
-
+# 使用 Selenium 和 ChromeDriver 截圖 HTML 文件
 def _html_to_png(html_file, output_png):
     try:
         # 安裝 ChromeDriver
@@ -38,18 +38,19 @@ def _html_to_png(html_file, output_png):
         print(f"Error during screenshot generation: {e}")
         raise
 
-def check_chrome_path():
-    chrome_path = "/app/.apt/usr/bin/google-chrome"
-    if not os.path.exists(chrome_path):
-        raise FileNotFoundError(f"Chrome not found at {chrome_path}")
-    print(f"Chrome found at {chrome_path}")
-
+# 生成 Timeline 圖片
 def generate_timeline(page_title, text_list, data_list, count):
-    check_chrome_path()
     html_template = TEMPLATE['timeline']
     text_list_js = str(text_list).replace("'", '"')
     data_list_js = str(data_list).replace("'", '"')
-    html_content = html_template.format(page_title=page_title, text_list=text_list_js, data_list=data_list_js, count=count)
+
+    # 添加字體到 HTML 樣式
+    html_content = f"""
+    <style>
+        body {{ font-family: 'Noto Sans CJK', sans-serif; }}
+    </style>
+    {html_template.format(page_title=page_title, text_list=text_list_js, data_list=data_list_js, count=count)}
+    """
 
     with tempfile.NamedTemporaryFile(delete=False, suffix='.html', mode='w', encoding='utf-8') as tmp_html:
         tmp_html.write(html_content)
@@ -69,6 +70,7 @@ def generate_timeline(page_title, text_list, data_list, count):
     
     return output_png
 
+# 生成四象限圖
 def generate_quadrant(main_title, x_axis_label, y_axis_label, quadrant_titles, quadrant_contents):
     html_template = TEMPLATE['quadrant']
     main_title_js = '"' + main_title.replace('"', '\\"') + '"'
@@ -77,60 +79,84 @@ def generate_quadrant(main_title, x_axis_label, y_axis_label, quadrant_titles, q
     quadrant_titles_js = str(quadrant_titles).replace("'", '"')
     quadrant_contents_js = str(quadrant_contents).replace("'", '"')
 
-    html_content = html_template.format(
+    # 添加字體到 HTML 樣式
+    html_content = f"""
+    <style>
+        body {{ font-family: 'Noto Sans CJK', sans-serif; }}
+    </style>
+    {html_template.format(
         main_title=main_title_js,
         x_axis_label=x_axis_label_js,
         y_axis_label=y_axis_label_js,
         quadrant_titles=quadrant_titles_js,
         quadrant_contents=quadrant_contents_js
-    )
+    )}
+    """
+
     with tempfile.NamedTemporaryFile(delete=False, suffix='.html', mode='w', encoding='utf-8') as tmp_html:
         tmp_html.write(html_content)
         tmp_html_path = tmp_html.name
+
     hash_id = _gen_hashid()
-    output_png = f"/tmp/quadrant_{hash_id}.png"  # 保存到 Heroku 的 /tmp 目錄
+    output_png = f"/tmp/quadrant_{hash_id}.png"
     _html_to_png(tmp_html_path, output_png)
     os.remove(tmp_html_path)
     return output_png
 
+# 生成階層圖
 def generate_hierarchy(title, levels):
     html_template = TEMPLATE['hierarchy']
     title_js = title.replace('"', '\\"')
     levels_js = json.dumps(levels, ensure_ascii=False)
 
-    html_content = html_template.format(
+    # 添加字體到 HTML 樣式
+    html_content = f"""
+    <style>
+        body {{ font-family: 'Noto Sans CJK', sans-serif; }}
+    </style>
+    {html_template.format(
         page_title=title_js,
         title=title_js,
         levels=levels_js
-    )
+    )}
+    """
 
     with tempfile.NamedTemporaryFile(delete=False, suffix='.html', mode='w', encoding='utf-8') as tmp_html:
         tmp_html.write(html_content)
         tmp_html_path = tmp_html.name
 
     hash_id = _gen_hashid()
-    output_png = f"/tmp/hierarchy_{hash_id}.png"  # 保存到 Heroku 的 /tmp 目錄
+    output_png = f"/tmp/hierarchy_{hash_id}.png"
     _html_to_png(tmp_html_path, output_png)
     os.remove(tmp_html_path)
     return output_png
 
+# 生成心智圖
 def generate_mindmap(title, mindMapData):
     html_template = TEMPLATE['mindmap']
     title_js = title.replace('"', '\\"')
     mindMapData_js = json.dumps(mindMapData, ensure_ascii=False)
-    html_content = html_template.format(
+
+    # 添加字體到 HTML 樣式
+    html_content = f"""
+    <style>
+        body {{ font-family: 'Noto Sans CJK', sans-serif; }}
+    </style>
+    {html_template.format(
         title=title_js,
         mindMapData=mindMapData_js
-    )
+    )}
+    """
+
     with tempfile.NamedTemporaryFile(delete=False, suffix='.html', mode='w', encoding='utf-8') as tmp_html:
         tmp_html.write(html_content)
         tmp_html_path = tmp_html.name
+
     hash_id = _gen_hashid()
-    output_png = f"/tmp/mindmap_{hash_id}.png"  # 保存到 Heroku 的 /tmp 目錄
+    output_png = f"/tmp/mindmap_{hash_id}.png"
     _html_to_png(tmp_html_path, output_png)
     os.remove(tmp_html_path)
     return output_png
-
 
 
 if __name__ == "__main__":
