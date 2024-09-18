@@ -11,8 +11,10 @@ def _gen_hashid(length=6):
     return ''.join(random.choice(characters) for _ in range(length))
 
 def _html_to_png(html_file, output_png):
-    hti = Html2Image(browser_executable="/app/.apt/usr/bin/google-chrome")  # 確保使用 Heroku 安裝的 Chrome
-    hti.screenshot(html_file=html_file, save_as=output_png)
+    output_dir, output_filename = os.path.split(output_png)
+    hti = Html2Image(browser_executable="/app/.apt/usr/bin/google-chrome")
+    hti.output_path = output_dir
+    hti.screenshot(html_file=html_file, save_as=output_filename) 
 
 def generate_timeline(page_title, text_list, data_list, count):
     html_template = TEMPLATE['timeline']
