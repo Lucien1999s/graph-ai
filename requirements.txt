@@ -1,6 +1,5 @@
-html2image
 fastapi
 uvicorn
 requests
-selenium
-chromedriver-autoinstaller
+PyGithub
+python-dotenv

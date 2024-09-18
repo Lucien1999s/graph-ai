@@ -1,270 +1,221 @@
-import tempfile
+import json
 import random
 import string
-from src.template import TEMPLATE
-from selenium import webdriver
-import chromedriver_autoinstaller
+from dotenv import load_dotenv
 import os
-import json
+from github import Github
+from src.template import TEMPLATE
 
-# 生成隨機 ID
+load_dotenv()
+
+# GitHub token and repo details
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
+REPO_NAME = "lucien1999s/graph-ai-storage"
+BRANCH_NAME = "main"
+g = Github(GITHUB_TOKEN)
+
+# Function to generate a hash ID
 def _gen_hashid(length=6):
     characters = string.ascii_letters + string.digits
-    return ''.join(random.choice(characters) for _ in range(length))
+    return "".join(random.choice(characters) for _ in range(length))
 
-# 使用 Selenium 和 ChromeDriver 截圖 HTML 文件
-def _html_to_png(html_file, output_png):
+# Function to upload HTML file to GitHub Pages
+def upload_html_to_github(file_path, commit_message="Upload HTML file"):
     try:
-        # 安裝 ChromeDriver
-        chromedriver_autoinstaller.install()
-
-        # 設定 Chrome 的選項
-        chrome_options = webdriver.ChromeOptions()
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-gpu")
-
-        # 啟動 Chrome 瀏覽器
-        driver = webdriver.Chrome(options=chrome_options)
-        
-        # 讀取 HTML 文件
-        driver.get(f"file://{html_file}")
-
-        # 儲存截圖
-        driver.save_screenshot(output_png)
-        driver.quit()
+        repo = g.get_repo(REPO_NAME)
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+        file_name = os.path.join('docs', os.path.basename(file_path))
+        try:
+            contents = repo.get_contents(file_name, ref=BRANCH_NAME)
+            repo.update_file(contents.path, commit_message, content, contents.sha, branch=BRANCH_NAME)
+            print(f"已更新文件：{file_name}")
+        except:
+            repo.create_file(file_name, commit_message, content, branch=BRANCH_NAME)
+            print(f"已創建文件：{file_name}")
+        url = f"https://lucien1999s.github.io/graph-ai-storage/{os.path.basename(file_path)}"
+        _refresh_github_pages(repo)
+        return url
     except Exception as e:
-        print(f"Error during screenshot generation: {e}")
-        raise
+        print(f"上傳失敗：{e}")
+        return None
 
-# 生成 Timeline 圖片
+# Function to force refresh GitHub Pages
+def _refresh_github_pages(repo):
+    try:
+        readme = repo.get_contents("README.md", ref=BRANCH_NAME)
+        updated_content = readme.decoded_content.decode() + " "
+        repo.update_file(readme.path, "Force refresh GitHub Pages", updated_content, readme.sha, branch=BRANCH_NAME)
+    except Exception as e:
+        print(f"刷新失敗：{e}")
+
+# Function to delete file from GitHub
+def delete_file_from_github(file_name, commit_message="Delete HTML file"):
+    try:
+        repo = g.get_repo(REPO_NAME)
+        file_path = os.path.join('docs', file_name)
+        contents = repo.get_contents(file_path, ref=BRANCH_NAME)
+        repo.delete_file(contents.path, commit_message, contents.sha, branch=BRANCH_NAME)
+        print(f"已刪除文件：{file_name}")
+        return True
+    except Exception as e:
+        print(f"刪除失敗：{e}")
+        return False
+
+# Function to generate timeline HTML
 def generate_timeline(page_title, text_list, data_list, count):
-    html_template = TEMPLATE['timeline']
+    html_template = TEMPLATE["timeline"]
     text_list_js = str(text_list).replace("'", '"')
     data_list_js = str(data_list).replace("'", '"')
 
-    # 添加字體到 HTML 樣式
-    html_content = f"""
-    <style>
-        body {{ font-family: 'Noto Sans CJK', sans-serif; }}
-    </style>
-    {html_template.format(page_title=page_title, text_list=text_list_js, data_list=data_list_js, count=count)}
-    """
-
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.html', mode='w', encoding='utf-8') as tmp_html:
-        tmp_html.write(html_content)
-        tmp_html_path = tmp_html.name
+    html_content = html_template.format(
+        page_title=page_title,
+        text_list=text_list_js,
+        data_list=data_list_js,
+        count=count,
+    )
 
     hash_id = _gen_hashid()
-    output_png = f"/tmp/timeline_{hash_id}.png"
-    
-    # 生成圖片
-    _html_to_png(tmp_html_path, output_png)
-    os.remove(tmp_html_path)
+    output_html = f"timeline_{hash_id}.html"
 
-    # 檢查圖片是否生成成功
-    if not os.path.exists(output_png):
-        print(f"File generation failed: {output_png}")
-        raise FileNotFoundError(f"File not found: {output_png}")
+    with open(output_html, "w", encoding="utf-8") as html_file:
+        html_file.write(html_content)
     
-    return output_png
+    # Upload to GitHub and delete locally
+    url = upload_html_to_github(output_html)
+    os.remove(output_html)
+    return url
 
-# 生成四象限圖
+# Function to generate quadrant HTML
 def generate_quadrant(main_title, x_axis_label, y_axis_label, quadrant_titles, quadrant_contents):
-    html_template = TEMPLATE['quadrant']
+    html_template = TEMPLATE["quadrant"]
     main_title_js = '"' + main_title.replace('"', '\\"') + '"'
     x_axis_label_js = '"' + x_axis_label.replace('"', '\\"') + '"'
     y_axis_label_js = '"' + y_axis_label.replace('"', '\\"') + '"'
     quadrant_titles_js = str(quadrant_titles).replace("'", '"')
     quadrant_contents_js = str(quadrant_contents).replace("'", '"')
 
-    # 添加字體到 HTML 樣式
-    html_content = f"""
-    <style>
-        body {{ font-family: 'Noto Sans CJK', sans-serif; }}
-    </style>
-    {html_template.format(
+    html_content = html_template.format(
         main_title=main_title_js,
         x_axis_label=x_axis_label_js,
         y_axis_label=y_axis_label_js,
         quadrant_titles=quadrant_titles_js,
-        quadrant_contents=quadrant_contents_js
-    )}
-    """
-
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.html', mode='w', encoding='utf-8') as tmp_html:
-        tmp_html.write(html_content)
-        tmp_html_path = tmp_html.name
+        quadrant_contents=quadrant_contents_js,
+    )
 
     hash_id = _gen_hashid()
-    output_png = f"/tmp/quadrant_{hash_id}.png"
-    _html_to_png(tmp_html_path, output_png)
-    os.remove(tmp_html_path)
-    return output_png
+    output_html = f"quadrant_{hash_id}.html"
 
-# 生成階層圖
+    with open(output_html, "w", encoding="utf-8") as html_file:
+        html_file.write(html_content)
+
+    # Upload to GitHub and delete locally
+    url = upload_html_to_github(output_html)
+    os.remove(output_html)
+    return url
+
+# Function to generate hierarchy HTML
 def generate_hierarchy(title, levels):
-    html_template = TEMPLATE['hierarchy']
+    html_template = TEMPLATE["hierarchy"]
     title_js = title.replace('"', '\\"')
     levels_js = json.dumps(levels, ensure_ascii=False)
 
-    # 添加字體到 HTML 樣式
-    html_content = f"""
-    <style>
-        body {{ font-family: 'Noto Sans CJK', sans-serif; }}
-    </style>
-    {html_template.format(
-        page_title=title_js,
-        title=title_js,
-        levels=levels_js
-    )}
-    """
-
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.html', mode='w', encoding='utf-8') as tmp_html:
-        tmp_html.write(html_content)
-        tmp_html_path = tmp_html.name
+    html_content = html_template.format(
+        page_title=title_js, title=title_js, levels=levels_js
+    )
 
     hash_id = _gen_hashid()
-    output_png = f"/tmp/hierarchy_{hash_id}.png"
-    _html_to_png(tmp_html_path, output_png)
-    os.remove(tmp_html_path)
-    return output_png
+    output_html = f"hierarchy_{hash_id}.html"
 
-# 生成心智圖
+    with open(output_html, "w", encoding="utf-8") as html_file:
+        html_file.write(html_content)
+
+    # Upload to GitHub and delete locally
+    url = upload_html_to_github(output_html)
+    os.remove(output_html)
+    return url
+
+# Function to generate mindmap HTML
 def generate_mindmap(title, mindMapData):
-    html_template = TEMPLATE['mindmap']
+    html_template = TEMPLATE["mindmap"]
     title_js = title.replace('"', '\\"')
     mindMapData_js = json.dumps(mindMapData, ensure_ascii=False)
 
-    # 添加字體到 HTML 樣式
-    html_content = f"""
-    <style>
-        body {{ font-family: 'Noto Sans CJK', sans-serif; }}
-    </style>
-    {html_template.format(
-        title=title_js,
-        mindMapData=mindMapData_js
-    )}
-    """
-
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.html', mode='w', encoding='utf-8') as tmp_html:
-        tmp_html.write(html_content)
-        tmp_html_path = tmp_html.name
+    html_content = html_template.format(title=title_js, mindMapData=mindMapData_js)
 
     hash_id = _gen_hashid()
-    output_png = f"/tmp/mindmap_{hash_id}.png"
-    _html_to_png(tmp_html_path, output_png)
-    os.remove(tmp_html_path)
-    return output_png
+    output_html = f"mindmap_{hash_id}.html"
 
+    with open(output_html, "w", encoding="utf-8") as html_file:
+        html_file.write(html_content)
 
+    # Upload to GitHub and delete locally
+    url = upload_html_to_github(output_html)
+    os.remove(output_html)
+    return url
+
+# Example usage
 if __name__ == "__main__":
-    # Timeline example
-    page_title="哈哈哈哈哈"
-    text_list = ["這是1", "這是2", "這是3", "這是4", "這是5"]
+    # Example for generating and uploading a timeline HTML
+    page_title = "時間軸示例"
+    text_list = ["事件1", "事件2", "事件3", "事件4", "事件5"]
     data_list = [
-        {"title": "標題 1", "content": "內文內容 1"},
-        {"title": "標題 2", "content": "內文內容 2"},
-        {"title": "標題 3", "content": "內文內容 3"},
-        {"title": "標題 4", "content": "內文內容 4"},
-        {"title": "標題 5", "content": "內文內容 5"}
+        {"title": "事件1", "content": "描述1"},
+        {"title": "事件2", "content": "描述2"},
+        {"title": "事件3", "content": "描述3"},
+        {"title": "事件4", "content": "描述4"},
+        {"title": "事件5", "content": "描述5"},
     ]
     count = 5
-    png_path = generate_timeline(page_title, text_list, data_list, count)
-    print(f"生成的 PNG 文件路徑: {png_path}")
+    timeline_url = generate_timeline(page_title, text_list, data_list, count)
+    print(f"時間軸網址: {timeline_url}")
 
-    # Quadrant example
-    # main_title = '重要性與緊急性矩陣'
-    # x_axis_label = '重要性'
-    # y_axis_label = '緊急性'
+    # Example for generating and uploading a quadrant HTML
+    main_title = "重要性與緊急性矩陣"
+    x_axis_label = "重要性"
+    y_axis_label = "緊急性"
+    quadrant_titles = [
+        "象限一（高重要性，高緊急性）",
+        "象限二（高重要性，低緊急性）",
+        "象限三（低重要性，高緊急性）",
+        "象限四（低重要性，低緊急性）",
+    ]
+    quadrant_contents = [
+        ["處理客戶投訴", "解決系統故障", "項目截止日期"],
+        ["制定長期戰略", "員工培訓", "建立客戶關係"],
+        ["參加不相關的會議", "處理部分電子郵件"],
+        ["瀏覽社交媒體", "無意義的娛樂活動", "瀏覽社交媒體", "無意義的娛樂活動"],
+    ]
+    quadrant_url = generate_quadrant(main_title, x_axis_label, y_axis_label, quadrant_titles, quadrant_contents)
+    print(f"四象限圖的網址: {quadrant_url}")
 
-    # quadrant_titles = [
-    #     '象限一（高重要性，高緊急性）',
-    #     '象限二（高重要性，低緊急性）',
-    #     '象限三（低重要性，高緊急性）',
-    #     '象限四（低重要性，低緊急性）'
-    # ]
+    # Example for generating and uploading a hierarchy HTML
+    hierarchy_title = "公司層級"
+    hierarchy_levels = ["高層管理", "中層管理", "基層員工", "操作人員", "基礎設施"]
+    hierarchy_url = generate_hierarchy(hierarchy_title, hierarchy_levels)
+    print(f"層級圖網址: {hierarchy_url}")
 
-    # quadrant_contents = [
-    #     ['處理客戶投訴', '解決系統故障', '項目截止日期'],
-    #     ['制定長期戰略', '員工培訓', '建立客戶關係'],
-    #     ['參加不相關的會議', '處理部分電子郵件'],
-    #     ['瀏覽社交媒體', '無意義的娛樂活動', '瀏覽社交媒體', '無意義的娛樂活動']
-    # ]
-
-    # output_png = generate_quadrant(
-    #     main_title,
-    #     x_axis_label,
-    #     y_axis_label,
-    #     quadrant_titles,
-    #     quadrant_contents
-    # )
-
-    # print(f"生成的四象限圖文件：{output_png}")
-
-    # # Hierarchy example
-    # test_title = "測試的金字塔階層圖"
-    # test_levels = [
-    #     "頂層管理",
-    #     "中層管理",
-    #     "基層員工",
-    #     "操作人員",
-    #     "基礎設施"
-    # ]
-    # png_file = generate_hierarchy(test_title, test_levels)
-    # print(f"生成的 PNG 文件: {png_file}")
-
-    # # Mind map example
-    # title = "我的心智图"
-    # mindMapData = {
-    #     "text": "中心主题",
-    #     "children": [
-    #         {
-    #             "text": "子主题 1",
-    #             "children": [
-    #                 {
-    #                     "text": "子主题 1-1",
-    #                     "children": [
-    #                         {"text": "子主题 1-1-1"},
-    #                         {"text": "子主题 1-1-2"}
-    #                     ]
-    #                 },
-    #                 {"text": "子主题 1-2"}
-    #             ]
-    #         },
-    #         {
-    #             "text": "子主题 2",
-    #             "children": [
-    #                 {
-    #                     "text": "子主题 2-1",
-    #                     "children": [
-    #                         {"text": "子主题 2-1-1"},
-    #                         {"text": "子主题 2-1-2"},
-    #                         {"text": "子主题 2-1-3"},
-    #                         {"text": "子主题 2-1-4"}
-    #                     ]
-    #                 },
-    #                 {"text": "子主题 2-2"},
-    #                 {"text": "子主题 2-3"}
-    #             ]
-    #         },
-    #         {
-    #             "text": "子主题 3",
-    #             "children": [
-    #                 {"text": "子主题 3-1",
-    #                  "children": [
-    #                         {"text": "子主题 2-1-1"},
-    #                         {"text": "子主题 2-1-2"},
-    #                     ]},
-    #                 {"text": "子主题 3-2",
-    #                  "children": [
-    #                         {"text": "子主题 2-2-1"},
-    #                         {"text": "子主题 2-2-2"},
-    #                     ]}
-    #             ]
-    #         }
-    #     ]
-    # }
-    # output_png = generate_mindmap(title, mindMapData)
-    # print(f"心智图已生成：{output_png}")
+    # Example for generating and uploading a mindmap HTML
+    mindmap_title = "心智圖示例"
+    mindmap_data = {
+        "text": "中心主題",
+        "children": [
+            {
+                "text": "子主題 1",
+                "children": [
+                    {"text": "子主題 1-1", "children": [{"text": "子主題 1-1-1"}, {"text": "子主題 1-1-2"}]},
+                    {"text": "子主題 1-2"}
+                ]
+            },
+            {
+                "text": "子主題 2",
+                "children": [
+                    {"text": "子主題 2-1", "children": [{"text": "子主題 2-1-1"}, {"text": "子主題 2-1-2"}]},
+                    {"text": "子主題 2-2"},
+                    {"text": "子主題 2-3"}
+                ]
+            }
+        ]
+    }
+    mindmap_url = generate_mindmap(mindmap_title, mindmap_data)
+    print(f"心智圖網址: {mindmap_url}")
