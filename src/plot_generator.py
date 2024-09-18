@@ -11,12 +11,23 @@ def _gen_hashid(length=6):
     return ''.join(random.choice(characters) for _ in range(length))
 
 def _html_to_png(html_file, output_png):
-    output_dir, output_filename = os.path.split(output_png)
-    hti = Html2Image(browser_executable="/app/.apt/usr/bin/google-chrome")
-    hti.output_path = output_dir
-    hti.screenshot(html_file=html_file, save_as=output_filename) 
+    try:
+        output_dir, output_filename = os.path.split(output_png)
+        hti = Html2Image(browser_executable="/app/.apt/usr/bin/google-chrome")
+        hti.output_path = output_dir
+        hti.screenshot(html_file=html_file, save_as=output_filename)
+    except Exception as e:
+        print(f"Error during screenshot generation: {e}")
+        raise
+
+def check_chrome_path():
+    chrome_path = "/app/.apt/usr/bin/google-chrome"
+    if not os.path.exists(chrome_path):
+        raise FileNotFoundError(f"Chrome not found at {chrome_path}")
+    print(f"Chrome found at {chrome_path}")
 
 def generate_timeline(page_title, text_list, data_list, count):
+    check_chrome_path()
     html_template = TEMPLATE['timeline']
     text_list_js = str(text_list).replace("'", '"')
     data_list_js = str(data_list).replace("'", '"')
@@ -27,9 +38,17 @@ def generate_timeline(page_title, text_list, data_list, count):
         tmp_html_path = tmp_html.name
 
     hash_id = _gen_hashid()
-    output_png = f"/tmp/timeline_{hash_id}.png"  # 保存到 Heroku 的 /tmp 目錄
+    output_png = f"/tmp/timeline_{hash_id}.png"
+    
+    # 生成圖片
     _html_to_png(tmp_html_path, output_png)
     os.remove(tmp_html_path)
+
+    # 檢查圖片是否生成成功
+    if not os.path.exists(output_png):
+        print(f"File generation failed: {output_png}")
+        raise FileNotFoundError(f"File not found: {output_png}")
+    
     return output_png
 
 def generate_quadrant(main_title, x_axis_label, y_axis_label, quadrant_titles, quadrant_contents):
