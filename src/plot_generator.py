@@ -11,7 +11,7 @@ def _gen_hashid(length=6):
     return ''.join(random.choice(characters) for _ in range(length))
 
 def _html_to_png(html_file, output_png):
-    hti = Html2Image(browser_executable="/app/.apt/usr/bin/google-chrome")
+    hti = Html2Image(browser_executable="/app/.apt/usr/bin/google-chrome")  # 確保使用 Heroku 安裝的 Chrome
     hti.screenshot(html_file=html_file, save_as=output_png)
 
 def generate_timeline(page_title, text_list, data_list, count):
@@ -25,7 +25,7 @@ def generate_timeline(page_title, text_list, data_list, count):
         tmp_html_path = tmp_html.name
 
     hash_id = _gen_hashid()
-    output_png = f"timeline_{hash_id}.png"
+    output_png = f"/tmp/timeline_{hash_id}.png"  # 保存到 Heroku 的 /tmp 目錄
     _html_to_png(tmp_html_path, output_png)
     os.remove(tmp_html_path)
     return output_png
@@ -49,15 +49,13 @@ def generate_quadrant(main_title, x_axis_label, y_axis_label, quadrant_titles, q
         tmp_html.write(html_content)
         tmp_html_path = tmp_html.name
     hash_id = _gen_hashid()
-    output_png = f"quadrant_{hash_id}.png"
+    output_png = f"/tmp/quadrant_{hash_id}.png"  # 保存到 Heroku 的 /tmp 目錄
     _html_to_png(tmp_html_path, output_png)
     os.remove(tmp_html_path)
     return output_png
 
-
 def generate_hierarchy(title, levels):
     html_template = TEMPLATE['hierarchy']
-
     title_js = title.replace('"', '\\"')
     levels_js = json.dumps(levels, ensure_ascii=False)
 
@@ -72,11 +70,10 @@ def generate_hierarchy(title, levels):
         tmp_html_path = tmp_html.name
 
     hash_id = _gen_hashid()
-    output_png = f"hierarchy_{hash_id}.png"
+    output_png = f"/tmp/hierarchy_{hash_id}.png"  # 保存到 Heroku 的 /tmp 目錄
     _html_to_png(tmp_html_path, output_png)
     os.remove(tmp_html_path)
     return output_png
-
 
 def generate_mindmap(title, mindMapData):
     html_template = TEMPLATE['mindmap']
@@ -90,10 +87,11 @@ def generate_mindmap(title, mindMapData):
         tmp_html.write(html_content)
         tmp_html_path = tmp_html.name
     hash_id = _gen_hashid()
-    output_png = f"mindmap_{hash_id}.png"
+    output_png = f"/tmp/mindmap_{hash_id}.png"  # 保存到 Heroku 的 /tmp 目錄
     _html_to_png(tmp_html_path, output_png)
     os.remove(tmp_html_path)
     return output_png
+
 
 
 if __name__ == "__main__":
