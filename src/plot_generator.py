@@ -10,8 +10,8 @@ load_dotenv()
 
 # GitHub token and repo details
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
-REPO_NAME = "lucien1999s/graph-ai-storage"
-BRANCH_NAME = "main"
+REPO_NAME = os.getenv('REPO_NAME')
+BRANCH_NAME = os.getenv('BRANCH_NAME')
 g = Github(GITHUB_TOKEN)
 
 # Function to generate a hash ID
@@ -33,7 +33,7 @@ def upload_html_to_github(file_path, commit_message="Upload HTML file"):
         except:
             repo.create_file(file_name, commit_message, content, branch=BRANCH_NAME)
             print(f"已創建文件：{file_name}")
-        url = f"https://lucien1999s.github.io/graph-ai-storage/{os.path.basename(file_path)}"
+        url = f"https://{REPO_NAME}/{os.path.basename(file_path)}"
         _refresh_github_pages(repo)
         return url
     except Exception as e:
