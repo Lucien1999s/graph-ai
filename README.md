@@ -2,8 +2,6 @@
 
 Graph AI is a powerful API that integrates with GPTs to generate visual diagrams such as **timelines** and **quadrant charts** based on conversational inputs. The application can be easily deployed on **Heroku** and provides a seamless interface to create insightful visualizations through natural language.
 
-![Graph AI](static/timeline.png)
-
 ## Features
 
 - **Conversation-based diagrams**: Generate visual timelines and quadrant charts from conversations.
